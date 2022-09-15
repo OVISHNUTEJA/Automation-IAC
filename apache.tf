@@ -1,23 +1,22 @@
 resource "aws_security_group" "apache" {
-  name        = "allow_apache"
+  name        = "allow apache"
   description = "Allow apache inbound traffic"
   vpc_id      = aws_vpc.vpc.id
 
   ingress {
-    description      = "ssh from admins"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    #security_groups = [aws_security_group.apache.id]
+    description     = "ssh for admin"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.bastion.id]
   }
 
- ingress {
-    description      = "ssh from endusers"
-    from_port        = 80
-    to_port          = 80
-    protocol         = "tcp"
+  ingress {
+    description     = "httpd for alb"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
-
   }
 
   egress {
@@ -28,31 +27,45 @@ resource "aws_security_group" "apache" {
     ipv6_cidr_blocks = ["::/0"]
   }
 
-  tags = {
-    Name = "prod-apache-sg"
-    terraform="true"
-  }
+  tags = merge(
+    {
+      Name        = "${var.name}-Apache-sg"
+      Project     = var.project,
+      Environment = var.environment
+
+    },
+    var.tags
+  )
+  depends_on = [
+    aws_security_group.alb, aws_security_group.bastion
+  ]
 }
 
 
 resource "aws_instance" "apache" {
-  ami  = "ami-0b89f7b3f054b957e"
-  instance_type = "t2.micro"
-  subnet_id=aws_subnet.private[0].id
- vpc_security_group_ids = [aws_security_group.apache.id]
- 
-  tags = {
-    Name = "prod-apache-ec2"
-  }
-}
+  ami                         = "ami-06489866022e12a14"
+  instance_type               = "t2.micro"
+  security_groups             = [aws_security_group.apache.id]
+  associate_public_ip_address = true
+  subnet_id                   = aws_subnet.public[0].id
+  user_data                   = file("scripts/userdata-apachce.sh")
 
-resource "aws_instance" "grafana" {
-  ami  = "ami-0b89f7b3f054b957e"
-  instance_type = "t2.micro"
-  subnet_id=aws_subnet.private[0].id
- vpc_security_group_ids = [aws_security_group.apache.id]
- 
-  tags = {
-    Name = "prod-grafana-ec2"
+  key_name = aws_key_pair.publickey.id
+
+  lifecycle {
+    ignore_changes  = all
+    prevent_destroy = true
   }
+
+
+  tags = merge(
+    {
+      Name        = "Apache"
+      Project     = var.project,
+      Environment = var.environment
+
+    },
+    var.tags
+  )
 }
+Footer

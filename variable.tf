@@ -97,8 +97,8 @@ variable "tags" {
   description = "Extra tags to attach to the VPC resources"
 }
 
-variable "db_password" {
-  description = "RDS root user password"
-  type        = string
-  sensitive   = true
-}
+# variable "db_password" {
+#  description = "RDS root user password"
+ # type        = string
+  #sensitive   = true
+#}
